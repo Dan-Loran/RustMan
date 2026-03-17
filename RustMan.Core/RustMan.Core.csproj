@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Modules\ConsoleStream\Contracts\" />
+    <Folder Include="Modules\ConsoleStream\Enums\" />
+    <Folder Include="Modules\ConsoleStream\Models\" />
+    <Folder Include="Modules\Routing\Contracts\" />
+    <Folder Include="Modules\Routing\Enums\" />
+    <Folder Include="Modules\Routing\Models\" />
+    <Folder Include="Modules\WebRcon\Contracts\" />
+    <Folder Include="Modules\WebRcon\Enums\" />
+    <Folder Include="Modules\WebRcon\Models\" />
+  </ItemGroup>
+
+</Project>

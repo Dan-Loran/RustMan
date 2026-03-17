@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/Docs/">
+    <File Path="ConsoleInterpretationModule.md" />
+    <File Path="ConsoleStreamModuleSpec.md" />
+    <File Path="ConsoleStreamPresentationModule.md" />
+    <File Path="ConsoleStreamWebDisplayModuleSpec.md" />
+    <File Path="ModuleForwardArchitecture.md" />
+    <File Path="RouterModuleSpec.md" />
+    <File Path="WebRCONModuleSpec.md" />
+  </Folder>
+  <Folder Name="/Docs/As Builts/">
+    <File Path="WebRconModuleAsBuilt.md" />
+  </Folder>
+  <Project Path="RustMan.Core/RustMan.Core.csproj" />
+  <Project Path="RustMan.Infrastructure/RustMan.Infrastructure.csproj" />
+  <Project Path="RustMan.Presentation/RustMan.Presentation.csproj" />
+  <Project Path="RustMan.Tests/RustMan.Tests.csproj" />
+  <Project Path="RustMan.Web/RustMan.Web.csproj" />
+</Solution>

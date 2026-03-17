@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Modules\Connection\Actions\" />
+    <Folder Include="Modules\Connection\Models\" />
+    <Folder Include="Modules\Connection\Services\" />
+    <Folder Include="Modules\Connection\State\" />
+    <Folder Include="Modules\ConsoleStream\Actions\" />
+    <Folder Include="Modules\ConsoleStream\Models\" />
+    <Folder Include="Modules\ConsoleStream\Services\" />
+    <Folder Include="Modules\ConsoleStream\State\" />
+  </ItemGroup>
+
+</Project>
