@@ -6,4 +6,5 @@ public enum ConsoleEntryKind
     Output = 1,
     Command = 2,
     System = 3
+
 }
