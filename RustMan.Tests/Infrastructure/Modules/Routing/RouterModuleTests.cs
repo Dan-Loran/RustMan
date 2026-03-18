@@ -1,4 +1,5 @@
 using RustMan.Core.Modules.Routing;
+using RustMan.Core.Modules.ConsoleStream;
 using RustMan.Core.Modules.WebRcon.Contracts;
 using RustMan.Core.Modules.WebRcon.Enums;
 using RustMan.Core.Modules.WebRcon.Models;
@@ -34,6 +35,8 @@ public sealed class RouterModuleTests
     {
         var webRconModule = new FakeWebRconModule();
         var routerModule = new RouterModule(webRconModule);
+        var consoleStreamModule = new FakeConsoleStreamModule();
+        routerModule.SetConsoleConsumer(consoleStreamModule);
 
         RoutedCommandResponse? routedResponse = null;
         routerModule.SetCommandResponseOutput((response, cancellationToken) =>
@@ -64,6 +67,7 @@ public sealed class RouterModuleTests
         Assert.NotNull(routedResponse);
         Assert.Equal(dispatchedCommand.Identifier, routedResponse!.CommandIdentifier);
         Assert.Same(inboundMessage, routedResponse.Message);
+        Assert.Single(consoleStreamModule.HandledMessages);
     }
 
     [Fact]
@@ -93,6 +97,110 @@ public sealed class RouterModuleTests
 
         Assert.NotNull(unhandledMessage);
         Assert.Same(inboundMessage, unhandledMessage!.Message);
+    }
+
+    [Fact]
+    public async Task InboundMessage_IsShuntedToConsoleStream()
+    {
+        var webRconModule = new FakeWebRconModule();
+        var routerModule = new RouterModule(webRconModule);
+        var consoleStreamModule = new FakeConsoleStreamModule();
+        routerModule.SetConsoleConsumer(consoleStreamModule);
+
+        await webRconModule.EmitInboundMessageAsync(new WebRconInboundMessage
+        {
+            Identifier = 7,
+            Type = "Generic",
+            Payload = new WebRconTextPayload
+            {
+                Text = "server event"
+            }
+        });
+
+        var routedMessage = Assert.Single(consoleStreamModule.HandledMessages);
+        Assert.Equal("server event", routedMessage.Message);
+        Assert.Equal("Generic", routedMessage.Type);
+    }
+
+    [Fact]
+    public async Task InboundMessage_ShuntsConsoleFieldsCorrectly()
+    {
+        var webRconModule = new FakeWebRconModule();
+        var routerModule = new RouterModule(webRconModule);
+        var consoleStreamModule = new FakeConsoleStreamModule();
+        routerModule.SetConsoleConsumer(consoleStreamModule);
+
+        var before = DateTime.UtcNow;
+        await webRconModule.EmitInboundMessageAsync(new WebRconInboundMessage
+        {
+            Identifier = 11,
+            Type = "Chat",
+            Payload = new WebRconChatPayload
+            {
+                Channel = 0,
+                Message = "hello world",
+                UserId = "1",
+                Username = "dan"
+            }
+        });
+        var after = DateTime.UtcNow;
+
+        var routedMessage = Assert.Single(consoleStreamModule.HandledMessages);
+        Assert.Equal("hello world", routedMessage.Message);
+        Assert.Equal("Chat", routedMessage.Type);
+        Assert.InRange(routedMessage.TimestampUtc, before, after);
+    }
+
+    [Fact]
+    public async Task CorrelatedInboundMessage_IsStillShuntedToConsoleStream()
+    {
+        var webRconModule = new FakeWebRconModule();
+        var routerModule = new RouterModule(webRconModule);
+        var consoleStreamModule = new FakeConsoleStreamModule();
+        routerModule.SetConsoleConsumer(consoleStreamModule);
+
+        await routerModule.RequestCommandAsync(new RouterCommandRequested
+        {
+            CommandText = "status",
+            Parameters = Array.Empty<string>()
+        });
+
+        var dispatchedCommand = Assert.Single(webRconModule.SentCommands);
+
+        await webRconModule.EmitInboundMessageAsync(new WebRconInboundMessage
+        {
+            Identifier = dispatchedCommand.Identifier,
+            Type = "Generic",
+            Payload = new WebRconTextPayload
+            {
+                Text = "hostname: Test Server"
+            }
+        });
+
+        var routedMessage = Assert.Single(consoleStreamModule.HandledMessages);
+        Assert.Equal("hostname: Test Server", routedMessage.Message);
+    }
+
+    [Fact]
+    public async Task UncorrelatedInboundMessage_IsStillShuntedToConsoleStream()
+    {
+        var webRconModule = new FakeWebRconModule();
+        var routerModule = new RouterModule(webRconModule);
+        var consoleStreamModule = new FakeConsoleStreamModule();
+        routerModule.SetConsoleConsumer(consoleStreamModule);
+
+        await webRconModule.EmitInboundMessageAsync(new WebRconInboundMessage
+        {
+            Identifier = 404,
+            Type = "Generic",
+            Payload = new WebRconTextPayload
+            {
+                Text = "unmatched event"
+            }
+        });
+
+        var routedMessage = Assert.Single(consoleStreamModule.HandledMessages);
+        Assert.Equal("unmatched event", routedMessage.Message);
     }
 
     [Theory]
@@ -172,6 +280,21 @@ public sealed class RouterModuleTests
             }
 
             return Consumer.OnConnectionStateChangedAsync(state);
+        }
+    }
+
+    private sealed class FakeConsoleStreamModule : IConsoleStreamModule
+    {
+        public List<RoutedConsoleMessage> HandledMessages { get; } = new();
+
+        public Task HandleMessageAsync(RoutedConsoleMessage message, CancellationToken cancellationToken = default)
+        {
+            HandledMessages.Add(message);
+            return Task.CompletedTask;
+        }
+
+        public void SetConsumer(IConsoleStreamConsumer consumer)
+        {
         }
     }
 }

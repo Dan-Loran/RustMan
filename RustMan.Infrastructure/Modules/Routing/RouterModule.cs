@@ -1,4 +1,5 @@
 using RustMan.Core.Modules.Routing;
+using RustMan.Core.Modules.ConsoleStream;
 using RustMan.Core.Modules.WebRcon.Contracts;
 using RustMan.Core.Modules.WebRcon.Enums;
 using RustMan.Core.Modules.WebRcon.Models;
@@ -13,6 +14,7 @@ public sealed class RouterModule : IRouterModule, IWebRconConsumer
     private readonly IWebRconModule _webRconModule;
     private readonly Dictionary<int, DateTime> _pendingCommands = new();
     private int _nextCommandIdentifier = 1;
+    private IConsoleStreamModule? _consoleStreamModule;
     private Action<RoutedCommandResponse>? _commandResponseHandler;
     private Action<RoutedUnhandledMessage>? _unhandledMessageHandler;
     private Action<RouterErrorOccurred>? _errorHandler;
@@ -21,6 +23,12 @@ public sealed class RouterModule : IRouterModule, IWebRconConsumer
     {
         _webRconModule = webRconModule;
         _webRconModule.SetConsumer(this);
+    }
+
+    public void SetConsoleConsumer(IConsoleStreamModule consoleStreamModule)
+    {
+        ArgumentNullException.ThrowIfNull(consoleStreamModule);
+        _consoleStreamModule = consoleStreamModule;
     }
 
     public void SetCommandResponseOutput(Func<RoutedCommandResponse, CancellationToken, Task> output)
@@ -103,6 +111,13 @@ public sealed class RouterModule : IRouterModule, IWebRconConsumer
 
         try
         {
+            _consoleStreamModule?.HandleMessageAsync(new RoutedConsoleMessage
+            {
+                Message = GetConsoleMessageText(message.Payload),
+                Type = message.Type,
+                TimestampUtc = DateTime.UtcNow
+            }, cancellationToken).GetAwaiter().GetResult();
+
             CleanupExpired();
 
             if (_pendingCommands.Remove(message.Identifier))
@@ -132,6 +147,16 @@ public sealed class RouterModule : IRouterModule, IWebRconConsumer
         }
 
         return Task.CompletedTask;
+    }
+
+    private static string GetConsoleMessageText(IWebRconPayload payload)
+    {
+        return payload switch
+        {
+            WebRconTextPayload textPayload => textPayload.Text,
+            WebRconChatPayload chatPayload => chatPayload.Message,
+            _ => string.Empty
+        };
     }
 
     public Task OnErrorOccurredAsync(WebRconError error, CancellationToken cancellationToken = default)

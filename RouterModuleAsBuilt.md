@@ -251,3 +251,58 @@ Router is NOT:
 - a workflow engine
 
 Keep it simple.
+
+# Router Module (As-Built) — Updated
+
+## Key Update
+
+Router now includes a **console shunt**.
+
+---
+
+## Console Shunt Behavior
+
+For every inbound WebRcon message:
+
+- Router ALWAYS creates a `RoutedConsoleMessage`
+- Router ALWAYS forwards it to ConsoleStream
+
+This occurs:
+
+- regardless of correlation match
+- regardless of message type
+- regardless of downstream routing decisions
+
+Console is a **parallel feed**, not a fallback.
+
+---
+
+## Updated Inbound Flow
+
+Server → WebRcon → Router  
+        ↘ ConsoleStream  
+        ↘ Other Handlers (Chat, Player, etc.)
+
+---
+
+## Design Rule
+
+All inbound runtime messages must be visible in the console feed, mirroring a foreground terminal experience.
+
+---
+
+## Integration
+
+Router connects to ConsoleStream via:
+
+- explicit method: `SetConsoleConsumer(IConsoleStreamModule)`
+
+No intermediate wiring layer is used.
+
+---
+
+## Summary of Change
+
+- added console shunt
+- ensured no inbound message is dropped from console path
+- preserved all existing routing and correlation behavior

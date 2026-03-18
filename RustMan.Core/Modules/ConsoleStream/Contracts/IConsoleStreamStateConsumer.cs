@@ -1,10 +1,11 @@
 using RustMan.Core.Modules.ConsoleStream.Models;
+using ConsoleStreamSnapshotModel = RustMan.Core.Modules.ConsoleStream.Models.ConsoleStreamSnapshot;
 
 namespace RustMan.Core.Modules.ConsoleStream.Contracts;
 
 public interface IConsoleStreamStateConsumer
 {
-    Task ReceiveSnapshotChangedAsync(ConsoleStreamSnapshot snapshot, CancellationToken cancellationToken = default);
+    Task ReceiveSnapshotChangedAsync(ConsoleStreamSnapshotModel snapshot, CancellationToken cancellationToken = default);
 
     Task ReceiveClearedAsync(CancellationToken cancellationToken = default);
 

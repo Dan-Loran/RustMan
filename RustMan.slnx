@@ -1,6 +1,5 @@
 <Solution>
   <Folder Name="/Docs/">
-    <File Path="ConsoleInterpretationModule.md" />
     <File Path="ConsoleStreamModuleSpec.md" />
     <File Path="ConsoleStreamPresentationModule.md" />
     <File Path="ConsoleStreamWebDisplayModuleSpec.md" />
@@ -12,6 +11,7 @@
     <File Path="RuntimeHarness.md" />
   </Folder>
   <Folder Name="/Docs/As Builts/">
+    <File Path="ConsoleStreamModuleAsBuilt.md" />
     <File Path="RouterModuleAsBuilt.md" />
     <File Path="WebRconModuleAsBuilt.md" />
   </Folder>
