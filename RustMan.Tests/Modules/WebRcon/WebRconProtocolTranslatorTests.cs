@@ -14,7 +14,8 @@ public sealed class WebRconProtocolTranslatorTests
         var command = new WebRconCommandRequest
         {
             Identifier = 1,
-            Message = "status",
+            CommandText = "status",
+            Parameters = new[] { "players", "active" },
             Name = "RustMan.RconCapture"
         };
 
@@ -22,7 +23,7 @@ public sealed class WebRconProtocolTranslatorTests
         using var document = JsonDocument.Parse(json);
 
         Assert.Equal(1, document.RootElement.GetProperty("Identifier").GetInt32());
-        Assert.Equal("status", document.RootElement.GetProperty("Message").GetString());
+        Assert.Equal("status players active", document.RootElement.GetProperty("Message").GetString());
         Assert.Equal("RustMan.RconCapture", document.RootElement.GetProperty("Name").GetString());
         Assert.Equal(3, document.RootElement.EnumerateObject().Count());
     }

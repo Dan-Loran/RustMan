@@ -3,37 +3,37 @@ using RustMan.Core.Modules.WebRcon.Contracts;
 using RustMan.Core.Modules.WebRcon.Enums;
 using RustMan.Core.Modules.WebRcon.Models;
 using RustMan.Infrastructure.Modules.Routing;
-using RustMan.Infrastructure.Modules.Wiring;
 
-namespace RustMan.Tests.Infrastructure.Modules.Wiring;
+namespace RustMan.Tests.Infrastructure.Modules.Routing;
 
-public sealed class RuntimeModuleWiringTests
+public sealed class RouterModuleTests
 {
     [Fact]
-    public async Task RouterCommandRequest_IsForwardedToWebRcon()
+    public async Task RequestCommandAsync_ForwardsStructuredCommandDirectlyToWebRcon()
     {
-        var routerModule = new RouterModule();
         var webRconModule = new FakeWebRconModule();
-        _ = new RuntimeModuleWiring(routerModule, webRconModule);
+        var routerModule = new RouterModule(webRconModule);
 
         await routerModule.RequestCommandAsync(new RouterCommandRequested
         {
             CommandText = "status",
-            Parameters = Array.Empty<string>()
+            Parameters = new[] { "players", "active" }
         });
+
+        Assert.Same(routerModule, webRconModule.Consumer);
 
         var command = Assert.Single(webRconModule.SentCommands);
         Assert.Equal(1, command.Identifier);
-        Assert.Equal("status", command.Message);
+        Assert.Equal("status", command.CommandText);
+        Assert.Equal(new[] { "players", "active" }, command.Parameters);
         Assert.Equal("RustMan.Router", command.Name);
     }
 
     [Fact]
-    public async Task MatchingInboundResponse_IsRoutedBackThroughRouter()
+    public async Task MatchingInboundResponse_IsCorrelatedCorrectly()
     {
-        var routerModule = new RouterModule();
         var webRconModule = new FakeWebRconModule();
-        _ = new RuntimeModuleWiring(routerModule, webRconModule);
+        var routerModule = new RouterModule(webRconModule);
 
         RoutedCommandResponse? routedResponse = null;
         routerModule.SetCommandResponseOutput((response, cancellationToken) =>
@@ -67,11 +67,41 @@ public sealed class RuntimeModuleWiringTests
     }
 
     [Fact]
-    public async Task DisconnectedState_ClearsPendingCommandCorrelation()
+    public async Task UnmatchedInboundMessage_IsForwardedInsteadOfDropped()
     {
-        var routerModule = new RouterModule();
         var webRconModule = new FakeWebRconModule();
-        _ = new RuntimeModuleWiring(routerModule, webRconModule);
+        var routerModule = new RouterModule(webRconModule);
+
+        RoutedUnhandledMessage? unhandledMessage = null;
+        routerModule.SetUnhandledMessageOutput((message, cancellationToken) =>
+        {
+            unhandledMessage = message;
+            return Task.CompletedTask;
+        });
+
+        var inboundMessage = new WebRconInboundMessage
+        {
+            Identifier = 99,
+            Type = "Generic",
+            Payload = new WebRconTextPayload
+            {
+                Text = "server event"
+            }
+        };
+
+        await webRconModule.EmitInboundMessageAsync(inboundMessage);
+
+        Assert.NotNull(unhandledMessage);
+        Assert.Same(inboundMessage, unhandledMessage!.Message);
+    }
+
+    [Theory]
+    [InlineData(WebRconConnectionState.Disconnected)]
+    [InlineData(WebRconConnectionState.Faulted)]
+    public async Task DisconnectOrFault_ClearsPendingCommandCorrelation(WebRconConnectionState state)
+    {
+        var webRconModule = new FakeWebRconModule();
+        var routerModule = new RouterModule(webRconModule);
 
         var routedResponses = new List<RoutedCommandResponse>();
         routerModule.SetCommandResponseOutput((response, cancellationToken) =>
@@ -88,7 +118,7 @@ public sealed class RuntimeModuleWiringTests
 
         var dispatchedCommand = Assert.Single(webRconModule.SentCommands);
 
-        await webRconModule.EmitConnectionStateChangedAsync(WebRconConnectionState.Disconnected);
+        await webRconModule.EmitConnectionStateChangedAsync(state);
         await webRconModule.EmitInboundMessageAsync(new WebRconInboundMessage
         {
             Identifier = dispatchedCommand.Identifier,
@@ -104,13 +134,13 @@ public sealed class RuntimeModuleWiringTests
 
     private sealed class FakeWebRconModule : IWebRconModule
     {
-        private IWebRconConsumer? _consumer;
+        public IWebRconConsumer? Consumer { get; private set; }
 
         public List<WebRconCommandRequest> SentCommands { get; } = new();
 
         public void SetConsumer(IWebRconConsumer consumer)
         {
-            _consumer = consumer;
+            Consumer = consumer;
         }
 
         public Task ConnectAsync(WebRconConnectionRequest request, CancellationToken cancellationToken = default)
@@ -126,22 +156,22 @@ public sealed class RuntimeModuleWiringTests
 
         public Task EmitInboundMessageAsync(WebRconInboundMessage message)
         {
-            if (_consumer is null)
+            if (Consumer is null)
             {
                 throw new InvalidOperationException("WebRcon consumer has not been set.");
             }
 
-            return _consumer.OnMessageReceivedAsync(message);
+            return Consumer.OnMessageReceivedAsync(message);
         }
 
         public Task EmitConnectionStateChangedAsync(WebRconConnectionState state)
         {
-            if (_consumer is null)
+            if (Consumer is null)
             {
                 throw new InvalidOperationException("WebRcon consumer has not been set.");
             }
 
-            return _consumer.OnConnectionStateChangedAsync(state);
+            return Consumer.OnConnectionStateChangedAsync(state);
         }
     }
 }

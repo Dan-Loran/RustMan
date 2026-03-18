@@ -1,26 +1,26 @@
 using RustMan.Core.Modules.Routing;
+using RustMan.Core.Modules.WebRcon.Contracts;
 using RustMan.Core.Modules.WebRcon.Enums;
+using RustMan.Core.Modules.WebRcon.Models;
 
 namespace RustMan.Infrastructure.Modules.Routing;
 
-public sealed class RouterModule : IRouterModule
+public sealed class RouterModule : IRouterModule, IWebRconConsumer
 {
     private static readonly TimeSpan CommandTtl = TimeSpan.FromSeconds(5);
+    private const string CommandSourceName = "RustMan.Router";
 
+    private readonly IWebRconModule _webRconModule;
     private readonly Dictionary<int, DateTime> _pendingCommands = new();
     private int _nextCommandIdentifier = 1;
-    private Action<RouterCommandDispatchRequested>? _commandDispatchHandler;
     private Action<RoutedCommandResponse>? _commandResponseHandler;
+    private Action<RoutedUnhandledMessage>? _unhandledMessageHandler;
     private Action<RouterErrorOccurred>? _errorHandler;
 
-    public void SetCommandDispatchOutput(Func<RouterCommandDispatchRequested, CancellationToken, Task> output)
+    public RouterModule(IWebRconModule webRconModule)
     {
-        ArgumentNullException.ThrowIfNull(output);
-
-        _commandDispatchHandler = dispatchRequest =>
-        {
-            output(dispatchRequest, CancellationToken.None).GetAwaiter().GetResult();
-        };
+        _webRconModule = webRconModule;
+        _webRconModule.SetConsumer(this);
     }
 
     public void SetCommandResponseOutput(Func<RoutedCommandResponse, CancellationToken, Task> output)
@@ -30,6 +30,16 @@ public sealed class RouterModule : IRouterModule
         _commandResponseHandler = routedCommandResponse =>
         {
             output(routedCommandResponse, CancellationToken.None).GetAwaiter().GetResult();
+        };
+    }
+
+    public void SetUnhandledMessageOutput(Func<RoutedUnhandledMessage, CancellationToken, Task> output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+
+        _unhandledMessageHandler = routedMessage =>
+        {
+            output(routedMessage, CancellationToken.None).GetAwaiter().GetResult();
         };
     }
 
@@ -43,28 +53,7 @@ public sealed class RouterModule : IRouterModule
         };
     }
 
-    public Task RequestCommandAsync(RouterCommandRequested input, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(input);
-
-        CleanupExpired();
-
-        var commandIdentifier = _nextCommandIdentifier;
-        _nextCommandIdentifier++;
-
-        _pendingCommands[commandIdentifier] = DateTime.UtcNow;
-
-        _commandDispatchHandler?.Invoke(new RouterCommandDispatchRequested
-        {
-            CommandIdentifier = commandIdentifier,
-            CommandText = input.CommandText,
-            Parameters = input.Parameters
-        });
-
-        return Task.CompletedTask;
-    }
-
-    public Task ReceiveInboundMessageAsync(RouterInboundMessageReceived input, CancellationToken cancellationToken = default)
+    public async Task RequestCommandAsync(RouterCommandRequested input, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
 
@@ -72,42 +61,87 @@ public sealed class RouterModule : IRouterModule
         {
             CleanupExpired();
 
-            var inboundMessage = input.Message;
-            var commandIdentifier = inboundMessage.Identifier;
+            var commandIdentifier = _nextCommandIdentifier;
+            _nextCommandIdentifier++;
 
-            if (_pendingCommands.Remove(commandIdentifier))
+            _pendingCommands[commandIdentifier] = DateTime.UtcNow;
+
+            await _webRconModule.SendCommandAsync(new WebRconCommandRequest
+            {
+                Identifier = commandIdentifier,
+                CommandText = input.CommandText,
+                Parameters = input.Parameters,
+                Name = CommandSourceName
+            }, cancellationToken);
+        }
+        catch (Exception)
+        {
+            _errorHandler?.Invoke(new RouterErrorOccurred
+            {
+                Message = "Router failed to dispatch command.",
+                CommandIdentifier = _nextCommandIdentifier - 1
+            });
+
+            throw;
+        }
+    }
+
+    public Task OnConnectionStateChangedAsync(WebRconConnectionState state, CancellationToken cancellationToken = default)
+    {
+        if (state == WebRconConnectionState.Disconnected ||
+            state == WebRconConnectionState.Faulted)
+        {
+            _pendingCommands.Clear();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task OnMessageReceivedAsync(WebRconInboundMessage message, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        try
+        {
+            CleanupExpired();
+
+            if (_pendingCommands.Remove(message.Identifier))
             {
                 _commandResponseHandler?.Invoke(new RoutedCommandResponse
                 {
-                    CommandIdentifier = commandIdentifier,
-                    Message = inboundMessage
+                    CommandIdentifier = message.Identifier,
+                    Message = message
                 });
-
-                return Task.CompletedTask;
+            }
+            else
+            {
+                _unhandledMessageHandler?.Invoke(new RoutedUnhandledMessage
+                {
+                    Message = message
+                });
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             _errorHandler?.Invoke(new RouterErrorOccurred
             {
                 Message = "Router failed to process inbound message.",
-                RelatedMessage = input.Message,
-                CommandIdentifier = input.Message.Identifier
+                RelatedMessage = message,
+                CommandIdentifier = message.Identifier
             });
         }
 
         return Task.CompletedTask;
     }
 
-    public Task NotifyConnectionStateChangedAsync(RouterConnectionStateChanged input, CancellationToken cancellationToken = default)
+    public Task OnErrorOccurredAsync(WebRconError error, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(error);
 
-        if (input.ConnectionState == WebRconConnectionState.Disconnected ||
-            input.ConnectionState == WebRconConnectionState.Faulted)
+        _errorHandler?.Invoke(new RouterErrorOccurred
         {
-            _pendingCommands.Clear();
-        }
+            Message = error.Message
+        });
 
         return Task.CompletedTask;
     }

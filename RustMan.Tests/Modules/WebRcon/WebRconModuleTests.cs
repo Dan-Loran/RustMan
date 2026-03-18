@@ -131,7 +131,8 @@ public sealed class WebRconModuleTests
         var command = new WebRconCommandRequest
         {
             Identifier = 1,
-            Message = "status",
+            CommandText = "status",
+            Parameters = new[] { "players", "active" },
             Name = "WebRconCommand"
         };
 
@@ -245,7 +246,7 @@ public sealed class WebRconModuleTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => module.SendCommandAsync(new WebRconCommandRequest
         {
             Identifier = 1,
-            Message = "status",
+            CommandText = "status",
             Name = "WebRconCommand"
         }));
 
@@ -284,13 +285,13 @@ public sealed class WebRconModuleTests
         var firstSend = Assert.ThrowsAsync<InvalidOperationException>(() => module.SendCommandAsync(new WebRconCommandRequest
         {
             Identifier = 1,
-            Message = "status",
+            CommandText = "status",
             Name = "WebRconCommand"
         }));
         var secondSend = Assert.ThrowsAsync<InvalidOperationException>(() => module.SendCommandAsync(new WebRconCommandRequest
         {
             Identifier = 2,
-            Message = "status",
+            CommandText = "status",
             Name = "WebRconCommand"
         }));
 

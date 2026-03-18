@@ -18,11 +18,26 @@ public sealed class WebRconProtocolTranslator : IWebRconProtocolTranslator
         var outboundPacket = new OutboundPacketDto
         {
             Identifier = command.Identifier,
-            Message = command.Message ?? throw new ArgumentException("Command message is required.", nameof(command)),
+            Message = BuildCommandMessage(command),
             Name = command.Name ?? throw new ArgumentException("Command name is required.", nameof(command))
         };
 
         return JsonSerializer.Serialize(outboundPacket, SerializerOptions);
+    }
+
+    private static string BuildCommandMessage(WebRconCommandRequest command)
+    {
+        if (string.IsNullOrEmpty(command.CommandText))
+        {
+            throw new ArgumentException("Command text is required.", nameof(command));
+        }
+
+        if (command.Parameters.Count == 0)
+        {
+            return command.CommandText;
+        }
+
+        return command.CommandText + " " + string.Join(" ", command.Parameters);
     }
 
     public WebRconInboundMessage DeserializeInboundMessage(string rawMessage)

@@ -1,238 +1,210 @@
-# Runtime Harness
+# Runtime Harness (Authoritative)
 
 ## Purpose
 
 This document defines how runtime modules in RustMan connect and communicate.
 
-This is the **authoritative source of truth** for:
+This is the authoritative source of truth for:
 
 - module wiring
 - signal flow
 - allowed communication paths
 - architectural boundaries
 
-If anything in code contradicts this document, the code is wrong.
+If code contradicts this document, the code is wrong.
 
 ---
 
 ## Core Rule (Non-Negotiable)
 
-> All runtime signals flow through Router.
+Router is the only module that communicates with WebRcon.
 
 This applies in both directions:
 
-### Outbound (to server)
+Outbound (to server):
+Any Module → Router → WebRcon → Server
 
-Command Sender → Router → WebRcon → Server
+Inbound (from server):
+Server → WebRcon → Router → First-Level Handlers
 
-### Inbound (from server)
-
-Server → WebRcon → Router → Handlers
-
----
-
-## High-Level Diagram
-
-```
-Command Sender
-      ↓
-    Router
-      ↓
-   WebRcon
-      ↓
-    Server
-      ↓
-   WebRcon
-      ↓
-    Router
-      ↓
-   Handlers
-```
-
-Router is the central signal bus.
-
-There are no bypass paths.
+There are no exceptions.
 
 ---
 
-## Module Roles
+## Command Path (Strict)
 
-### Router
+Any module that needs to send a command to the Rust server MUST:
 
-Responsibilities:
-- central signal bus
-- minimal command/response correlation
-- routing decisions only
-- distribution of signals to downstream handlers
+1. send a command request to Router
+2. Router assigns identifier and manages correlation
+3. Router forwards the command to WebRcon
+
+No module may:
+
+- call WebRcon directly
+- reference IWebRconModule outside Router
+- bypass Router for convenience
+
+---
+
+## Inbound Message Path (Strict)
+
+All inbound messages MUST follow:
+
+WebRcon → Router → First-Level Handlers
+
+Router is responsible for:
+
+- correlation (command responses)
+- forwarding non-correlated messages
+- distributing messages to appropriate handlers
+
+Router must not drop inbound messages.
+
+---
+
+## Router Responsibilities
+
+Router is the runtime signal bus.
+
+It is responsible for:
+
+- receiving all inbound messages from WebRcon
+- receiving all outbound command requests
+- assigning command identifiers
+- correlating command responses
+- forwarding unmatched messages to handlers
+- emitting system-level signals (errors, connection state)
 
 Router does NOT:
-- build JSON
-- format command strings
+
 - interpret message meaning
+- parse console/chat semantics
+- build JSON
 - manage UI state
 - persist data
-- own transport behavior
 
-Router is intentionally simple and boring.
+Router is intentionally simple.
 
 ---
 
-### WebRcon
+## WebRcon Responsibilities
 
-Responsibilities:
+WebRcon is the protocol boundary.
+
+It is responsible for:
+
 - WebSocket transport
 - connection lifecycle
 - JSON serialization/deserialization
 - translating between wire format and typed messages
 
 WebRcon does NOT:
-- route messages
-- interpret message meaning
-- track command correlation
-- manage application state
 
-WebRcon is the protocol boundary.
+- route messages
+- interpret meaning
+- track command correlation
+- accept commands from arbitrary modules
+
+WebRcon receives commands only from Router.
 
 ---
 
-### Handlers (Console, Chat, Player, etc.)
+## First-Level Handlers
+
+Examples:
+
+- Console Interpretation
+- Chat Interpretation (future)
+- Player Interpretation (future)
 
 Responsibilities:
-- interpret meaning of messages
-- update state
-- drive application behavior
 
-Handlers do NOT:
-- talk directly to WebRcon
-- bypass Router
-- perform transport logic
+- receive routed inbound messages from Router
+- determine relevance for their domain
+- emit domain-specific signals
+
+These are the entry points into feature pipelines.
 
 ---
 
-## Wiring Rules
+## Downstream Feature Pipelines
 
-These rules are strict.
+After Router, modules form linear pipelines.
 
-- WebRcon talks only to Router
-- Router talks to WebRcon and downstream handlers
-- Handlers do not talk to WebRcon
+Example (Console):
+
+Router → Console Interpretation → Console Stream → Presentation → Web
+
+Rules:
+
+- modules communicate only through contracts
+- no shared mutable state across modules
+- no access to another module’s internals
+- pipelines must be explicit and linear
+- no sideways coupling between unrelated features
+
+Router is NOT required between downstream modules.
+
+---
+
+## Wiring Rules (Strict)
+
+- WebRcon talks ONLY to Router
+- Router talks to WebRcon and first-level handlers
+- All server-bound commands go through Router
+- All server-originated messages go through Router
+- No module may reference IWebRconModule except Router
 - No module may bypass Router
-- No sideways communication between modules
-- All signals must pass through Router
+- No module may access another module’s internals
+- No cross-feature direct communication
 
 If a shortcut seems convenient, it is wrong.
 
 ---
 
-## Signal Flow
+## Signal Types
 
-### Outbound Signals
+### Outbound
 
-1. `RouterCommandRequested`
-   - enters Router from a command sender
-   - contains:
-     - `CommandText`
-     - `Parameters`
+- RouterCommandRequested
+- RouterCommandDispatchRequested
 
-2. `RouterCommandDispatchRequested`
-   - emitted by Router
-   - contains:
-     - `CommandIdentifier`
-     - `CommandText`
-     - `Parameters`
-   - consumed by WebRcon
+### Inbound
 
----
+- RouterInboundMessageReceived
+- RoutedCommandResponse
+- RoutedInboundMessage (non-correlated)
 
-### Inbound Signals
+### System
 
-1. `RouterInboundMessageReceived`
-   - emitted by WebRcon
-   - consumed by Router
-
-2. `RoutedCommandResponse`
-   - emitted by Router when identifier matches
-   - consumed by downstream handlers
-
----
-
-### System Signals
-
-- `RouterConnectionStateChanged`
-- `RouterErrorOccurred`
+- RouterConnectionStateChanged
+- RouterErrorOccurred
 
 ---
 
 ## Command Model
 
-Commands are treated as:
+Commands are:
 
-- `string CommandText`
-- `IReadOnlyList<string> Parameters`
+- string CommandText
+- IReadOnlyList<string> Parameters
 
-Examples:
-
-- `status`
-- `server.save`
-- `global.say`
-
-Commands are NOT split into name/subcommand.
-
----
-
-### Important Note
-
-```csharp
-// NOTE:
-// Parameters are currently represented as List<string> for simplicity.
-// This may be revisited in the future if commands require richer typing
-// (e.g., player identifiers, coordinates, typed values).
-```
-
----
-
-## Command Formatting
-
-Router does NOT build the final command string.
+Router does NOT format commands.
 
 WebRcon is responsible for:
 
-- combining `CommandText` and `Parameters`
 - building the final command string
-- wrapping it in JSON:
-
-```json
-{
-  "Identifier": <id>,
-  "Message": "<final command string>"
-}
-```
-
----
-
-## Router Behavior Summary
-
-For each inbound message:
-
-1. cleanup expired command identifiers
-2. check for identifier match
-3. if match:
-   - emit `RoutedCommandResponse`
-   - remove identifier
-   - stop processing
-4. otherwise:
-   - do nothing (fall-through)
-
-Router does not emit "unhandled" messages.
+- wrapping JSON payloads
 
 ---
 
 ## Command Correlation
 
-- Router assigns a sequential integer identifier
-- identifiers are stored in-memory
-- identifiers expire after 5 seconds
-- identifiers are cleared on disconnect/fault
+- sequential integer identifiers
+- stored in-memory
+- 5 second TTL
+- cleared on disconnect/fault
 
 No retries. No replay.
 
@@ -243,51 +215,49 @@ No retries. No replay.
 Router:
 
 - catches internal exceptions
-- emits `RouterErrorOccurred`
+- emits RouterErrorOccurred
 - continues processing
 
-Router must never bring down the pipeline.
+The runtime pipeline must never break.
 
 ---
 
 ## Extension Model
 
-To add a new module (Chat, Player, etc.):
+To add a new feature:
 
-1. define new routed signal(s) in Core
-2. extend Router to emit those signals
-3. connect handler via wiring
+1. create a first-level handler
+2. attach it to Router
+3. build downstream pipeline modules
+4. connect modules via contracts
 
 Do NOT:
-- modify WebRcon
+
+- modify WebRcon for feature behavior
 - bypass Router
 - duplicate routing logic
 
 ---
 
-## Known Simplifications
+## Architectural Intent
 
-The following are intentional:
+Router is the control panel.  
+WebRcon is the external wiring.  
+Handlers are attached devices.  
+Pipelines carry signals forward.
 
-- parameters are simple strings
-- no command typing system
-- no retry logic
-- no batching
-- no persistence in Router
-- no message buffering beyond correlation
-
-These may evolve later, but only with explicit design.
+Everything flows through the panel.
 
 ---
 
 ## Final Principle
 
-> Router is the electrical bus.  
-> WebRcon is the wire protocol.  
-> Handlers are the devices.
+If a module needs to reach the Rust server:
 
-Keep them separate.
+It goes through Router.
 
-Keep them simple.
+If a message comes from the Rust server:
 
-Keep them explicit.
+It comes through Router.
+
+No exceptions.
