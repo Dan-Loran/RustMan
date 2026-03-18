@@ -8,7 +8,11 @@
     <File Path="RouterModuleSpec.md" />
     <File Path="WebRCONModuleSpec.md" />
   </Folder>
+  <Folder Name="/Docs/Architecture/">
+    <File Path="RuntimeHarness.md" />
+  </Folder>
   <Folder Name="/Docs/As Builts/">
+    <File Path="RouterModuleAsBuilt.md" />
     <File Path="WebRconModuleAsBuilt.md" />
   </Folder>
   <Project Path="RustMan.Core/RustMan.Core.csproj" />

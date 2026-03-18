@@ -7,4 +7,9 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\RustMan.Core\RustMan.Core.csproj" />
+    <ProjectReference Include="..\RustMan.Infrastructure\RustMan.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
