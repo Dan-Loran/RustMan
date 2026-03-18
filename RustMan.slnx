@@ -12,6 +12,7 @@
   </Folder>
   <Folder Name="/Docs/As Builts/">
     <File Path="ConsoleStreamModuleAsBuilt.md" />
+    <File Path="ConsoleStreamPresentation.md" />
     <File Path="RouterModuleAsBuilt.md" />
     <File Path="WebRconModuleAsBuilt.md" />
   </Folder>

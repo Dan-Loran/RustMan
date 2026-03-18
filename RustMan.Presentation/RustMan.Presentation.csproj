@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\RustMan.Core\RustMan.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Modules\Connection\Actions\" />
     <Folder Include="Modules\Connection\Models\" />
     <Folder Include="Modules\Connection\Services\" />
