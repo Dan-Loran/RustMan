@@ -42,12 +42,13 @@ public sealed class WebRconModule : IWebRconModule
     public async Task ConnectAsync(WebRconConnectionRequest request, CancellationToken cancellationToken = default)
     {
         var consumer = _consumer ?? throw new InvalidOperationException("WebRcon consumer has not been set.");
-        _connectionRequest = request;
+        var connectionRequest = PrepareConnectionRequest(request);
+        _connectionRequest = connectionRequest;
 
         try
         {
             await consumer.OnConnectionStateChangedAsync(WebRconConnectionState.Connecting, cancellationToken);
-            await ConnectWithRetriesAsync(request, cancellationToken);
+            await ConnectWithRetriesAsync(connectionRequest, cancellationToken);
             await consumer.OnConnectionStateChangedAsync(WebRconConnectionState.Connected, cancellationToken);
             StartReceiveLoop(consumer);
         }
@@ -179,6 +180,22 @@ public sealed class WebRconModule : IWebRconModule
         }
 
         throw lastException ?? new InvalidOperationException("WebRcon connection attempt failed.");
+    }
+
+    private static WebRconConnectionRequest PrepareConnectionRequest(WebRconConnectionRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var serverUriBuilder = new UriBuilder(request.ServerUri)
+        {
+            Path = "/"
+        };
+
+        return new WebRconConnectionRequest
+        {
+            ServerUri = serverUriBuilder.Uri,
+            Password = request.Password
+        };
     }
 
     private Task<bool> EnsureReconnectAsync(IWebRconConsumer consumer, CancellationToken cancellationToken = default)

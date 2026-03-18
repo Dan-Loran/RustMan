@@ -1,0 +1,458 @@
+@page "/instances/{Slug}"
+@implements IAsyncDisposable
+
+@using RustMan.Models
+@using RustMan.Services
+
+@inject InstanceService InstanceService
+@inject InstanceBackupService InstanceBackupService
+@inject InstanceWipeService InstanceWipeService
+@inject InstanceConsoleService InstanceConsoleService
+@inject RustRconService RustRconService
+
+<PageTitle>Instance Workspace</PageTitle>
+
+@if (_instance is null)
+{
+    <section class="workspace-shell">
+        <header class="page-header">
+            <div>
+                <p class="page-eyebrow">Instance Workspace</p>
+                <h1>Instance not found</h1>
+                <p class="page-copy">
+                    The requested instance could not be loaded.
+                </p>
+            </div>
+        </header>
+    </section>
+}
+else
+{
+    <section class="workspace-shell">
+        <header class="page-header">
+            <div>
+                <p class="page-eyebrow">Instance Workspace</p>
+                <h1>@_instance.Name</h1>
+                <p class="page-copy">
+                    Create restore points for <strong>@_instance.Slug</strong> and manage restores from the central backup inventory.
+                </p>
+            </div>
+
+            <div class="page-actions">
+                <a class="secondary-link" href="/instances/@Slug/edit">Edit Instance</a>
+                <a class="secondary-link" href="/settings/backups">Open Backup Inventory</a>
+                <button type="button"
+                        class="danger-button shell-button"
+                        @onclick="OpenWipeModal"
+                        disabled="@(_isCreatingBackup || _isWiping)">
+                    Run Wipe
+                </button>
+                <button type="button"
+                        class="secondary-link shell-button"
+                        @onclick="CreateBackupAsync"
+                        disabled="@(_isCreatingBackup || _isWiping)">
+                    @(_isCreatingBackup ? "Creating Backup..." : "Create Backup")
+                </button>
+            </div>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(_statusMessage))
+        {
+            <p class="@($"workspace-message {(_isError ? "is-error" : "is-success")}")">@_statusMessage</p>
+        }
+
+        <section class="surface-card workspace-details-strip">
+            <div class="workspace-status">
+                <div class="status-pill">Slug: @_instance.Slug</div>
+                <div class="status-pill">Map: @_instance.MapSize / @_instance.MapSeed</div>
+                <div class="status-pill">Players: @_instance.MaxPlayers</div>
+                <div class="status-pill">Game Port: @_instance.GamePort</div>
+                <div class="status-pill">Query Port: @_instance.QueryPort</div>
+                <div class="status-pill">RCON Port: @_instance.RconPort</div>
+            </div>
+        </section>
+
+        <section class="surface-card workspace-players-card">
+            <div class="section-header">
+                <div>
+                    <p class="page-eyebrow">Players</p>
+                    <h2>Live Player Panel</h2>
+                    <p class="page-copy">
+                        Player management is the next live-management slice. This section is reserved for the player table and player actions so it stays at the top of the operational workspace.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="surface-card workspace-console-card">
+            <div class="section-header">
+                <div>
+                    <p class="page-eyebrow">Console</p>
+                    <h2>Live Console</h2>
+                    <p class="page-copy">
+                        RustMan polls the instance console log while the server is running. One-shot WebRCON commands appear in the same console surface.
+                    </p>
+                </div>
+            </div>
+
+            <div class="console-output-shell">
+                <pre class="console-output">@_displayConsoleText</pre>
+            </div>
+
+            <div class="command-strip">
+                <input class="command-input"
+                       type="text"
+                       @bind="_liveCommand"
+                       @bind:event="oninput"
+                       @onkeydown="HandleCommandInputKeyDown"
+                       disabled="@_isRunningCommand" />
+                <button type="button"
+                        class="secondary-link shell-button"
+                        @onclick="RunLiveCommandAsync"
+                        disabled="@(_isRunningCommand || string.IsNullOrWhiteSpace(_liveCommand))">
+                    @(_isRunningCommand ? "Running..." : "Run Command")
+                </button>
+            </div>
+        </section>
+    </section>
+}
+
+@if (_showWipeModal && _instance is not null)
+{
+    <div class="modal-backdrop" @onclick="CloseWipeModal">
+        <div class="wipe-modal surface-card" @onclick:stopPropagation="true">
+            <p class="page-eyebrow">World Wipe</p>
+            <h2>Run wipe for @_instance.Name</h2>
+            <p class="page-copy">
+                RustMan will create a backup, wipe the live server files, apply the selected options, and leave the instance stopped so you can bring it back online manually.
+            </p>
+
+            <div class="wipe-option-group">
+                <label class="option-label">Map Seed</label>
+                <label class="option-choice">
+                    <input type="radio" name="seedOption" checked="@(!_wipeUseNewSeed)" @onchange="@(() => _wipeUseNewSeed = false)" />
+                    Keep current seed (@_instance.MapSeed)
+                </label>
+                <label class="option-choice">
+                    <input type="radio" name="seedOption" checked="@_wipeUseNewSeed" @onchange="@(() => _wipeUseNewSeed = true)" />
+                    Use new seed
+                </label>
+
+                @if (_wipeUseNewSeed)
+                {
+                    <input type="number"
+                           class="wipe-seed-input"
+                           min="1"
+                           @bind="_wipeNewSeed"
+                           @bind:event="oninput" />
+                }
+            </div>
+
+            <div class="wipe-option-group">
+                <label class="option-label">Blueprints</label>
+                <label class="option-choice">
+                    <input type="radio" name="blueprintOption" checked="@_wipePreserveBlueprints" @onchange="@(() => _wipePreserveBlueprints = true)" />
+                    Preserve blueprints
+                </label>
+                <label class="option-choice">
+                    <input type="radio" name="blueprintOption" checked="@(!_wipePreserveBlueprints)" @onchange="@(() => _wipePreserveBlueprints = false)" />
+                    Wipe blueprints
+                </label>
+            </div>
+
+            <div class="wipe-summary">
+                <strong>Summary</strong>
+                <p>
+                    RustMan will create a safety backup, wipe the live world files, @(_wipePreserveBlueprints ? "preserve blueprint data" : "wipe blueprint data"), @(_wipeUseNewSeed ? $"set map seed to {_wipeNewSeed}" : $"keep map seed {_instance.MapSeed}"), and leave the instance stopped until you start it manually.
+                </p>
+            </div>
+
+            <div class="wipe-modal-actions">
+                <button type="button"
+                        class="danger-button shell-button"
+                        @onclick="RunWipeAsync"
+                        disabled="@(_isWiping)">
+                    @(_isWiping ? "Running Wipe..." : "Confirm Wipe")
+                </button>
+                <button type="button"
+                        class="secondary-link shell-button"
+                        @onclick="CloseWipeModal"
+                        disabled="@(_isWiping)">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    private InstanceRecord? _instance;
+    private string? _statusMessage;
+    private bool _isError;
+    private bool _isCreatingBackup;
+    private bool _isWiping;
+    private bool _showWipeModal;
+    private bool _wipeUseNewSeed;
+    private bool _wipePreserveBlueprints = true;
+    private int _wipeNewSeed;
+    private string _liveCommand = string.Empty;
+    private bool _isRunningCommand;
+    private string _consoleLogText = "Console output will appear here after the instance writes its first log lines.";
+    private readonly List<string> _commandTranscriptLines = [];
+    private string _displayConsoleText = "Console output will appear here after the instance writes its first log lines.";
+    private CancellationTokenSource? _consolePollingCts;
+    private Task? _consolePollingTask;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await StopConsolePollingAsync();
+        _instance = await InstanceService.GetBySlugAsync(Slug);
+
+        if (_instance is not null)
+        {
+            await RefreshConsoleAsync();
+            StartConsolePolling();
+        }
+    }
+
+    private async Task CreateBackupAsync()
+    {
+        if (_instance is null)
+        {
+            return;
+        }
+
+        _isCreatingBackup = true;
+        _statusMessage = null;
+        _isError = false;
+
+        try
+        {
+            var backup = await InstanceBackupService.CreateBackupAsync(_instance.Slug);
+            _statusMessage = $"Created backup '{backup.Name}'.";
+        }
+        catch (Exception ex)
+        {
+            _isError = true;
+            _statusMessage = ex.Message;
+        }
+        finally
+        {
+            _isCreatingBackup = false;
+        }
+    }
+
+    private void OpenWipeModal()
+    {
+        if (_instance is null)
+        {
+            return;
+        }
+
+        _statusMessage = null;
+        _isError = false;
+        _showWipeModal = true;
+        _wipeUseNewSeed = false;
+        _wipePreserveBlueprints = true;
+        _wipeNewSeed = Random.Shared.Next(1, int.MaxValue);
+    }
+
+    private void CloseWipeModal()
+    {
+        if (_isWiping)
+        {
+            return;
+        }
+
+        _showWipeModal = false;
+    }
+
+    private async Task RunWipeAsync()
+    {
+        if (_instance is null)
+        {
+            return;
+        }
+
+        _isWiping = true;
+        _statusMessage = null;
+        _isError = false;
+
+        try
+        {
+            var backup = await InstanceWipeService.WipeAsync(
+                _instance.Slug,
+                new InstanceWipeOptions
+                {
+                    UseNewMapSeed = _wipeUseNewSeed,
+                    NewMapSeed = _wipeUseNewSeed ? _wipeNewSeed : null,
+                    PreserveBlueprints = _wipePreserveBlueprints
+                });
+
+            _instance = await InstanceService.GetBySlugAsync(Slug);
+            _statusMessage = $"Wipe completed. Backup '{backup.Name}' was created first.";
+            _showWipeModal = false;
+        }
+        catch (Exception ex)
+        {
+            _isError = true;
+            _statusMessage = ex.Message;
+        }
+        finally
+        {
+            _isWiping = false;
+        }
+    }
+
+    private async Task RunLiveCommandAsync()
+    {
+        if (_instance is null || string.IsNullOrWhiteSpace(_liveCommand))
+        {
+            return;
+        }
+
+        _isRunningCommand = true;
+        var command = _liveCommand.Trim();
+
+        try
+        {
+            var result = await RustRconService.ExecuteAsync(_instance, command);
+            AppendCommandTranscript($"> {command}");
+            AppendCommandTranscript(string.IsNullOrWhiteSpace(result.Message) ? "(no output)" : result.Message);
+            _liveCommand = string.Empty;
+            RebuildConsoleDisplay();
+        }
+        catch (Exception ex)
+        {
+            AppendCommandTranscript($"> {command}");
+            AppendCommandTranscript($"[RustMan] {ex.Message}");
+            RebuildConsoleDisplay();
+        }
+        finally
+        {
+            _isRunningCommand = false;
+        }
+    }
+
+    private async Task HandleCommandInputKeyDown(KeyboardEventArgs args)
+    {
+        if (_isRunningCommand || args.Key != "Enter")
+        {
+            return;
+        }
+
+        await RunLiveCommandAsync();
+    }
+
+    private void StartConsolePolling()
+    {
+        _consolePollingCts = new CancellationTokenSource();
+        _consolePollingTask = PollConsoleAsync(_consolePollingCts.Token);
+    }
+
+    private async Task PollConsoleAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshConsoleAsync(cancellationToken);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task RefreshConsoleAsync(CancellationToken cancellationToken = default)
+    {
+        if (_instance is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _consoleLogText = await InstanceConsoleService.GetRecentOutputAsync(_instance.Slug, cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _consoleLogText = $"RustMan could not read the live console: {ex.Message}";
+        }
+
+        RebuildConsoleDisplay();
+    }
+
+    private void AppendCommandTranscript(string text)
+    {
+        foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
+        {
+            _commandTranscriptLines.Add(line);
+        }
+
+        while (_commandTranscriptLines.Count > 40)
+        {
+            _commandTranscriptLines.RemoveAt(0);
+        }
+    }
+
+    private void RebuildConsoleDisplay()
+    {
+        var sections = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(_consoleLogText))
+        {
+            sections.Add(_consoleLogText.TrimEnd());
+        }
+
+        if (_commandTranscriptLines.Count > 0)
+        {
+            sections.Add("--- RustMan Commands ---");
+            sections.Add(string.Join(Environment.NewLine, _commandTranscriptLines));
+        }
+
+        _displayConsoleText = sections.Count == 0
+            ? "Console output will appear here after the instance writes its first log lines."
+            : string.Join(Environment.NewLine + Environment.NewLine, sections);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopConsolePollingAsync();
+    }
+
+    private async Task StopConsolePollingAsync()
+    {
+        if (_consolePollingCts is null)
+        {
+            return;
+        }
+
+        _consolePollingCts.Cancel();
+
+        if (_consolePollingTask is not null)
+        {
+            try
+            {
+                await _consolePollingTask;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        _consolePollingCts.Dispose();
+        _consolePollingCts = null;
+        _consolePollingTask = null;
+    }
+}

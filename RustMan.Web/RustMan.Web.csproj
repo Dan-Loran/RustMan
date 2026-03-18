@@ -8,8 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RustMan.Core\RustMan.Core.csproj" />
     <ProjectReference Include="..\RustMan.Infrastructure\RustMan.Infrastructure.csproj" />
+    <ProjectReference Include="..\RustMan.Presentation\RustMan.Presentation.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,131 @@
+@page "/settings"
+@using RustMan.Services
+@implements IAsyncDisposable
+@inject SharedRustRuntimeUpdateCoordinator RuntimeUpdateCoordinator
+@inject IPlatformService PlatformService
+
+<PageTitle>Settings</PageTitle>
+
+<h1>Settings</h1>
+
+<div class="settings-grid">
+    @if (PlatformService.IsLinux())
+    {
+        <section class="settings-card">
+            <div class="settings-eyebrow">Maintenance</div>
+            <h2>Updates</h2>
+            <p>
+                Update the shared Rust runtime used by all managed instances.
+                RustMan will block the update if any enabled instance is still running.
+            </p>
+
+            @if (!string.IsNullOrWhiteSpace(_statusMessage))
+            {
+                <p class="@($"settings-status {(_isError ? "is-error" : "is-success")}")">@_statusMessage</p>
+            }
+
+                <button class="primary-button" @onclick="StartRustUpdateAsync" disabled="@(_isUpdating)">
+                @(_isUpdating ? "Updating..." : "Update Rust")
+            </button>
+        </section>
+    }
+    else
+    {
+        <section class="settings-card">
+            <div class="settings-eyebrow">Maintenance</div>
+            <h2>Updates</h2>
+            <p>Rust runtime updates are only available when RustMan is running on Linux.</p>
+        </section>
+    }
+
+    <section class="settings-card">
+        <div class="settings-eyebrow">Maintenance</div>
+        <h2>Backups</h2>
+        <p>
+            Open the shared backup inventory to restore or delete backups, even when the original instance no longer exists.
+        </p>
+
+        <a class="primary-button settings-link" href="/settings/backups">Open Backup Inventory</a>
+    </section>
+
+    <section class="settings-card">
+        <div class="settings-eyebrow">Product</div>
+        <h2>About</h2>
+        <p>
+            Review the installed RustMan version and the host-level paths used for the application and shared runtime.
+        </p>
+
+        <a class="primary-button settings-link" href="/settings/about">Open About Page</a>
+    </section>
+</div>
+
+@code {
+    private CancellationTokenSource? _pollCancellation;
+    private bool _isUpdating;
+    private bool _isError;
+    private string? _statusMessage;
+
+    protected override void OnInitialized()
+    {
+        if (!PlatformService.IsLinux())
+        {
+            return;
+        }
+
+        ApplyStatus(RuntimeUpdateCoordinator.GetStatus());
+        _pollCancellation = new CancellationTokenSource();
+        _ = PollStatusAsync(_pollCancellation.Token);
+    }
+
+    private Task StartRustUpdateAsync()
+    {
+        if (!RuntimeUpdateCoordinator.TryStart())
+        {
+            ApplyStatus(RuntimeUpdateCoordinator.GetStatus());
+            return Task.CompletedTask;
+        }
+
+        ApplyStatus(RuntimeUpdateCoordinator.GetStatus());
+        return Task.CompletedTask;
+    }
+
+    private async Task PollStatusAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(() =>
+                {
+                    ApplyStatus(RuntimeUpdateCoordinator.GetStatus());
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Component disposed.
+        }
+    }
+
+    private void ApplyStatus(SharedRustRuntimeUpdateStatus status)
+    {
+        _isUpdating = status.State == SharedRustRuntimeUpdateState.Running;
+        _isError = status.State == SharedRustRuntimeUpdateState.Failed;
+
+        _statusMessage = status.State switch
+        {
+            SharedRustRuntimeUpdateState.Idle => null,
+            _ => status.Message
+        };
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _pollCancellation?.Cancel();
+        _pollCancellation?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

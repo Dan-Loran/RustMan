@@ -1,0 +1,37 @@
+@using RustMan.Core.Modules.WebRcon.Enums
+@using RustMan.Presentation.Modules.Connection.Services
+@implements IDisposable
+@inject ConnectionPresentationService ConnectionPresentationService
+
+<footer class="connection-status-bar connection-status-bar--@GetStatusClass()" aria-live="polite">
+    <span class="connection-status-bar__label">WebRCON</span>
+    <span class="connection-status-bar__text">@ConnectionPresentationService.ViewModel.StatusText</span>
+</footer>
+
+@code {
+    protected override void OnInitialized()
+    {
+        ConnectionPresentationService.State.Changed += HandleStateChanged;
+    }
+
+    public void Dispose()
+    {
+        ConnectionPresentationService.State.Changed -= HandleStateChanged;
+    }
+
+    private string GetStatusClass()
+    {
+        return ConnectionPresentationService.ViewModel.Status switch
+        {
+            WebRconConnectionState.Connecting => "connecting",
+            WebRconConnectionState.Connected => "connected",
+            WebRconConnectionState.Faulted => "faulted",
+            _ => "disconnected"
+        };
+    }
+
+    private void HandleStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+}

@@ -1,0 +1,17 @@
+[Unit]
+Description=RustMan Web Application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rustman
+Group=rustman
+WorkingDirectory=/opt/rustman/app
+EnvironmentFile=/etc/rustman/rustman.env
+ExecStart=/opt/rustman/app/RustMan.Web
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

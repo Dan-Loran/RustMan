@@ -14,6 +14,7 @@ public sealed class WebRconConnectionClient : IWebRconConnectionClient, IDisposa
 
         var socket = new ClientWebSocket();
         var connectionUri = BuildConnectionUri(request.ServerUri, request.Password);
+        ConfigureSocket(socket);
 
         DisposeSocket();
 
@@ -22,10 +23,10 @@ public sealed class WebRconConnectionClient : IWebRconConnectionClient, IDisposa
             await socket.ConnectAsync(connectionUri, cancellationToken);
             _socket = socket;
         }
-        catch
+        catch (Exception exception)
         {
             socket.Dispose();
-            throw;
+            throw CreateConnectionException(connectionUri, socket.Options, exception);
         }
     }
 
@@ -108,15 +109,63 @@ public sealed class WebRconConnectionClient : IWebRconConnectionClient, IDisposa
         ArgumentNullException.ThrowIfNull(serverUri);
         ArgumentNullException.ThrowIfNull(password);
 
-        var builder = new UriBuilder(serverUri);
-        var existingPath = builder.Path.TrimEnd('/');
-        var escapedPassword = Uri.EscapeDataString(password);
+        return new Uri($"{serverUri.Scheme}://{serverUri.Host}:{serverUri.Port}/{password}");
+    }
 
-        builder.Path = string.IsNullOrEmpty(existingPath) || existingPath == "/"
-            ? $"/{escapedPassword}"
-            : $"{existingPath}/{escapedPassword}";
+    private static void ConfigureSocket(ClientWebSocket socket)
+    {
+        ArgumentNullException.ThrowIfNull(socket);
 
-        return builder.Uri;
+        socket.Options.Proxy = null;
+    }
+
+    private static Exception CreateConnectionException(
+        Uri connectionUri,
+        ClientWebSocketOptions options,
+        Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(connectionUri);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(exception);
+
+        var diagnostics = new StringBuilder()
+            .Append("WebRcon WebSocket connect failed. ")
+            .Append("Uri=").Append(connectionUri).Append("; ")
+            .Append("Scheme=").Append(connectionUri.Scheme).Append("; ")
+            .Append("KeepAliveInterval=").Append(options.KeepAliveInterval).Append("; ")
+            .Append("CollectHttpResponseDetails=").Append(options.CollectHttpResponseDetails).Append("; ")
+            .Append("DangerousDeflateOptionsConfigured=").Append(options.DangerousDeflateOptions is not null).Append("; ")
+            .Append("ProxyConfigured=").Append(options.Proxy is not null).Append("; ")
+            .Append("CredentialsConfigured=").Append(options.Credentials is not null).Append("; ")
+            .Append("ClientCertificatesConfigured=").Append(options.ClientCertificates?.Count ?? 0).Append("; ")
+            .Append("CookiesConfigured=").Append(options.Cookies is not null).Append("; ")
+            .Append("ExceptionChain=").Append(BuildExceptionChain(exception));
+
+        return new InvalidOperationException(diagnostics.ToString(), exception);
+    }
+
+    private static string BuildExceptionChain(Exception exception)
+    {
+        var builder = new StringBuilder();
+        var current = exception;
+        var depth = 0;
+
+        while (current is not null)
+        {
+            if (depth > 0)
+            {
+                builder.Append(" --> ");
+            }
+
+            builder.Append(current.GetType().FullName)
+                .Append(": ")
+                .Append(current.Message);
+
+            current = current.InnerException;
+            depth++;
+        }
+
+        return builder.ToString();
     }
 
     private void DisposeSocket()

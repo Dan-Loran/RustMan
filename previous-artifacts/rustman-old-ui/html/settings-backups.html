@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/">
+    
+    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.46ein0sx1k.css" />
+    <link rel="stylesheet" href="app.bn8ml55fza.css" />
+    <link rel="stylesheet" href="RustMan.c1iwy05w0d.styles.css" />
+    <script type="importmap">{
+  "imports": {
+    "./Components/Layout/ReconnectModal.razor.js": "./Components/Layout/ReconnectModal.abdmv1u4y3.razor.js",
+    "./_framework/blazor.server.js": "./_framework/blazor.server.2tj1sjhksk.js",
+    "./_framework/blazor.web.js": "./_framework/blazor.web.b9228eflpl.js",
+    "./lib/bootstrap/dist/js/bootstrap.bundle.js": "./lib/bootstrap/dist/js/bootstrap.bundle.6cfz1n2cew.js",
+    "./lib/bootstrap/dist/js/bootstrap.bundle.min.js": "./lib/bootstrap/dist/js/bootstrap.bundle.min.493y06b0oq.js",
+    "./lib/bootstrap/dist/js/bootstrap.esm.min.js": "./lib/bootstrap/dist/js/bootstrap.esm.min.jj8uyg4cgr.js",
+    "./lib/bootstrap/dist/js/bootstrap.esm.js": "./lib/bootstrap/dist/js/bootstrap.esm.vr1egmr9el.js",
+    "./lib/bootstrap/dist/js/bootstrap.min.js": "./lib/bootstrap/dist/js/bootstrap.min.63fj8s7r0e.js",
+    "./lib/bootstrap/dist/js/bootstrap.js": "./lib/bootstrap/dist/js/bootstrap.notf2xhcfb.js"
+  }
+}</script>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <!--Blazor:{"type":"server","prerenderId":"b98860b9c9c14203b2a884c0db5221cf","key":{"locationHash":"77D12F14A8105320B1AAED6AE7E689DA0EC4483270A645E84079EAA0FFDF550D:21","formattedComponentKey":""},"sequence":0,"descriptor":"CfDJ8AHQX2QIf25Pij6mKW9duLQ7XzVo0pWHvz1Yk8qtoBTrf5DruvOLimfYHfmucu01aWfg00nrqa7JwtBjHturYADUJz3FF3BdOhlbypZKs3L69aV9YXF47oH8Lf0QsD5sZUP6QQOsfJhWp09r2cg\u002BaGMDbGyRN1t6OCwxFkjYU99QPON2hmn8EoiPKiRFaXgfNgdtI9LK\u002BeVJqiYyIzAXgN6IdLZTEDsPLj08mv6Sq5zzAhWvfgfFw7mXsvfgIy6LV0FqU8VmuqIClQ99VZQU74ErGxGHhE34AMxNufheCLDHvm9M6vHeo6nH2lambcriV2OebvuaH9IHI2CLAJQxauEozqoT0Djvfu4P6O8gA6yH8MEV6e2x9Fn/2zj6t\u002BWg8kl\u002BecULwQWbOQaOVhNn1ELi6oy0PHPkO/w8WV2vVBHOe8IVdXBHKI9So5gTkloYVcjY08rpNDdSfY85rWkg3Zba0N/jqRqnaBuSZhWJ\u002B/DOAWeAT1PT\u002BQQBykmF3nDbPHiFoPSaCjUMF0tmHQAwVnuILS8odBXiflxyLFZH0CWSV7FOHCd1gaBcgW9cBl2pcsnzpZwGvpbO6jILn3EWaBU="}--><title>Backup Inventory</title><!--Blazor:{"prerenderId":"b98860b9c9c14203b2a884c0db5221cf"}--></head>
+
+<body><!--Blazor:{"type":"server","prerenderId":"5ac416e7d30447b3817b9dfe555fa5f8","key":{"locationHash":"EF7A912B40657D236F43A67AFDAC0053E343F9A7957C6F57B1326970D25C6A0B:24","formattedComponentKey":""},"sequence":1,"descriptor":"CfDJ8AHQX2QIf25Pij6mKW9duLSmbj7XFCYuCepv3RhufD0CS6Va0EVuSKdvP1EHdOJnx3MvxqxEfzz\u002BgiELuvRqsXeriuekRMhYXvUHodbVRa9K/OW7ERWzubhlCCRaABg0a4\u002BCxb9Zr8cbbg1Txg0aoQ0NG25ReTVaybdn6Czp066tua5HMqptcBG601CIFCE04sJRZtqQf5FNByOR5LRCqxCKa5zw1WMClNrwIKPhQfqQjYx\u002BllgkANg6q3b6m04IZj6f2bSl5akrItomXbT7huMKv\u002BDT81f9C/SLu51rvrRrEuDt6ciXuR5EBwJ0kXzk2mRkNLZueHZFqf7wc6Zq59QKnQYnKg8TFeW2KVykHNmRnHS6r7Ff\u002BaW3qiS4VSV96Yh9AkvCAfUkTNuCF9/TmldXszUUKcC5UhM0jiGf7qI2IyklMbh\u002Bg/mEWjSOGAamcD3Cd8sq/XOUIuWFhPIigzCWbKEveVBRRZ\u002Bo93LDTjhdvECHCmRt4wLKAirpIqTE6TBvefSis\u002BFPvcK0PwsehjY="}--><div class="app-shell" b-t70hg9o97a><header class="app-header" b-t70hg9o97a><nav class="main-nav" b-xilbzshw3n><div class="nav-brand" b-xilbzshw3n><a class="brand-link" href b-xilbzshw3n><span class="brand-mark" b-xilbzshw3n>R</span>
+            <span class="brand-name" b-xilbzshw3n>RustMan</span></a></div>
+
+    <input id="main-nav-toggle" type="checkbox" class="nav-toggle" b-xilbzshw3n>
+    <label for="main-nav-toggle" class="nav-toggle-button" aria-label="Toggle navigation" b-xilbzshw3n><span b-xilbzshw3n></span>
+        <span b-xilbzshw3n></span>
+        <span b-xilbzshw3n></span></label>
+
+    <div class="nav-links" b-xilbzshw3n><a href="" class="nav-link">Dashboard</a>
+        <a href="instances" class="nav-link">Instances</a>
+        <a href="settings" class="nav-link active" aria-current="page">Settings</a></div>
+
+    <div class="nav-user" b-xilbzshw3n><button type="button" class="user-button" b-xilbzshw3n><span class="user-avatar" b-xilbzshw3n>A</span>
+            <span class="user-name" b-xilbzshw3n>Admin</span></button></div></nav></header>
+
+    <main class="app-main" b-t70hg9o97a><div class="app-content" b-t70hg9o97a>
+
+<section class="page-header" b-noszdid8ph><div b-noszdid8ph><p class="page-eyebrow" b-noszdid8ph>Settings</p>
+        <h1 b-noszdid8ph>Backup Inventory</h1>
+        <p class="page-copy" b-noszdid8ph>
+            Review all saved backups, restore them as clean replacements, or remove them when they are no longer needed.
+        </p></div>
+
+    <div class="page-actions" b-noszdid8ph><a class="secondary-link" href="/settings" b-noszdid8ph>Back to Settings</a></div></section>
+
+<section class="surface-card backup-shell" b-noszdid8ph><h2 b-noszdid8ph>All Backups</h2>
+    <p b-noszdid8ph>
+        Backups stay available even when the original instance has been deleted.
+    </p><p class="backup-empty" b-noszdid8ph>No backups are available yet. Create a backup from an instance workspace to populate this inventory.</p></section></div></main></div>
+
+<div id="blazor-error-ui" data-nosnippet b-t70hg9o97a>
+    An unhandled error has occurred.
+    <a href="." class="reload" b-t70hg9o97a>Reload</a>
+    <span class="dismiss" b-t70hg9o97a>x</span></div>
+        <!--Blazor:{"prerenderId":"5ac416e7d30447b3817b9dfe555fa5f8"}-->
+    <script type="module" src="Components/Layout/ReconnectModal.abdmv1u4y3.razor.js" b-nxf9rmzngi></script>
+
+<dialog id="components-reconnect-modal" data-nosnippet b-nxf9rmzngi><div class="components-reconnect-container" b-nxf9rmzngi><div class="components-rejoining-animation" aria-hidden="true" b-nxf9rmzngi><div b-nxf9rmzngi></div>
+            <div b-nxf9rmzngi></div></div>
+        <p class="components-reconnect-first-attempt-visible" b-nxf9rmzngi>
+            Rejoining the server...
+        </p>
+        <p class="components-reconnect-repeated-attempt-visible" b-nxf9rmzngi>
+            Rejoin failed... trying again in <span id="components-seconds-to-next-attempt" b-nxf9rmzngi></span> seconds.
+        </p>
+        <p class="components-reconnect-failed-visible" b-nxf9rmzngi>
+            Failed to rejoin.<br b-nxf9rmzngi>Please retry or reload the page.
+        </p>
+        <button id="components-reconnect-button" class="components-reconnect-failed-visible" b-nxf9rmzngi>
+            Retry
+        </button>
+        <p class="components-pause-visible" b-nxf9rmzngi>
+            The session has been paused by the server.
+        </p>
+        <p class="components-resume-failed-visible" b-nxf9rmzngi>
+            Failed to resume the session.<br b-nxf9rmzngi>Please retry or reload the page.
+        </p>
+        <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible" b-nxf9rmzngi>
+            Resume
+        </button></div></dialog>
+    <script src="_framework/blazor.web.b9228eflpl.js"></script></body></html><!--Blazor-Server-Component-State:CfDJ8AHQX2QIf25Pij6mKW9duLTvJ1T+UJ/HkgrL11OP/uaaTltRjaw3rkNzYDtQ1xYOw3geZkOnj/X8I3jRzqgdYB5Kf8pjRSE29GmK4p9/VX4drPLdGhWsfeQqhOgM28MlQWNs3yuIfUI42rm9W/lZyHTO6Dsc6ajswihO6lRINLjVVxnXbYj/MypU3Vj99rUwbBAR/+mNaU9eZ0N4zp5AmNmEytTpz+TeVyRJJOREALhz7lu3Cd2W4NVZnYYYUyQqEKv+f82ciEEEAyzlak4RaNuphHsE+jz5GKFGFzFJ+8aGrjth7OPTh3tNwOMbqyLS62YuW+NSta4a/9L649vqX0GrqvMeRj9uLlDF1LeIdr8FbMVMIJyu9gdAThrEbn4FTwWm4Mx7fKjECldbLKlnPadPwosgfqhwAI9OMMoWX/wU0voUWyDNJzuTUFm01MXbrmPtAzffODrRvoexUfGsVfNMkt2n5cm2Kd8tf5S40e6hi1OrPVNDuK6xs3A9WpiPlPCRitQHLaAhecUHsVdUS7Lo53ouR/GwnG0fqkMd4roVGnuctj9oRhNlT9riILJDZp0hETDoyJfZXDhqkYgKC8JdjYr1jtJ9Qf1rRahkPQ5HR2urJ6JmmaNdj8uMscGjz7nkY4iwp2xKsh8XWgcUBIFEUUZm+/wfa8RdvpbJua2ZDGFtUstX+5bblrLfFTdYvgovpjqIKSqykeStYKEByUOpCbFw6FrDpGDXEEHC9pIv5u2IaCyHbEp4rgjYMIGWWZLdVpMo505TWg0GSna6f4KIFcLL4SdNuBVE2iOtoU218MPO7Zx3pbGBtEWwx2F+Ax362OaTac5eh3jHiXBQya+oydb/ISU5nLGXj0Ywhq5U/IF/RRKVv5cRxGYDntGbkL6jsLN6/OQnNlOZsGXKT7qIreIOog4KE7UrltMK7bi8qBnT2BVnnoE1/6HqzfmovayKMRUU4sr8OCaO5sGrlGJlmzsYyguc2IjKz2W7GentgBObJ4MiMvhBnyiZ/hL/+2tfz5g/oXUz686+wO48ArEWlMFrEmgV0MQQ8in4AbSAeWunlfMM05Iqrr4RbcT+kz5xjyUAd+qb5HcZeX18ze1WFSBAt7oj6fY0q4J7vfekjiDgXQWPyyyQZ2lRH+ykYw==-->

@@ -1,0 +1,81 @@
+.settings-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.settings-card {
+    max-width: 48rem;
+    padding: 2rem;
+    border: 1px solid rgba(28, 42, 64, 0.12);
+    border-radius: 1.75rem;
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 1.25rem 2.5rem rgba(35, 55, 84, 0.08);
+}
+
+.settings-eyebrow {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6b7a90;
+}
+
+.settings-card h2 {
+    margin: 0 0 0.75rem;
+    font-size: 2rem;
+    font-weight: 500;
+    color: #1f2e43;
+}
+
+.settings-card p {
+    margin: 0 0 1.25rem;
+    font-size: 1.1rem;
+    line-height: 1.55;
+    color: #44546a;
+}
+
+.settings-status {
+    padding: 0.85rem 1rem;
+    border-radius: 1rem;
+}
+
+.settings-status.is-success {
+    background: rgba(222, 245, 231, 0.9);
+    color: #1a6a43;
+}
+
+.settings-status.is-error {
+    background: rgba(255, 235, 232, 0.95);
+    color: #8f2e28;
+}
+
+.primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 12rem;
+    padding: 0.95rem 1.4rem;
+    border: 1px solid rgba(25, 96, 167, 0.14);
+    border-radius: 1rem;
+    background: #2f66a7;
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.settings-link {
+    text-decoration: none;
+}
+
+.primary-button:hover:not(:disabled) {
+    background: #25588f;
+    transform: translateY(-1px);
+}
+
+.primary-button:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}

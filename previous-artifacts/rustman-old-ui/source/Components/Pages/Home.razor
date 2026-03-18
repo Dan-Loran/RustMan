@@ -1,0 +1,30 @@
+@page "/"
+
+<PageTitle>Dashboard</PageTitle>
+
+<section class="dashboard-intro">
+    <p class="eyebrow">System Overview</p>
+    <h1>Dashboard</h1>
+    <p class="lead">
+        Host metrics, instance summaries, and alerts will land here as the
+        dashboard slices are implemented.
+    </p>
+</section>
+
+<div class="dashboard-grid">
+    <section class="dashboard-card">
+        <h2>Host Status</h2>
+        <p>CPU, memory, disk, and network usage will be shown here.</p>
+    </section>
+
+    <section class="dashboard-card">
+        <h2>Instances</h2>
+        <p>Each instance card will summarize health and link into its workspace.</p>
+        <a class="panel-link" href="instances">Open instances</a>
+    </section>
+
+    <section class="dashboard-card">
+        <h2>Alerts</h2>
+        <p>Warnings such as offline servers or high entity counts will surface here.</p>
+    </section>
+</div>

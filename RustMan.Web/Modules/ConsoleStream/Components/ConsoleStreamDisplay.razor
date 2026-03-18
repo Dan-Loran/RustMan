@@ -1,4 +1,82 @@
-<section class="console-stream-display">
-    <h2>Console Stream</h2>
-    <p>Console stream display placeholder.</p>
+@using RustMan.Presentation.Modules.ConsoleStream
+@implements IDisposable
+
+<section class="console-stream-display" aria-label="Console stream">
+    <header class="console-stream-display__header">
+        <div>
+            <p class="console-stream-display__eyebrow">Source of Truth</p>
+            <h2>Console</h2>
+        </div>
+        <div class="console-stream-display__status" aria-live="polite">
+            @if (ViewModel.IsEmpty)
+            {
+                <span class="console-stream-display__status-text">Awaiting server output</span>
+            }
+            else
+            {
+                <span class="console-stream-display__status-text">@ViewModel.Lines.Count line(s)</span>
+            }
+        </div>
+    </header>
+
+    <div class="console-stream-display__viewport" role="log" aria-live="polite" aria-relevant="additions text">
+        @if (ViewModel.IsEmpty)
+        {
+            <div class="console-stream-display__empty">
+                <span class="console-stream-display__empty-title">Console stream is empty.</span>
+                <span class="console-stream-display__empty-detail">Live server output will appear here when messages arrive.</span>
+            </div>
+        }
+        else
+        {
+            <ol class="console-stream-display__lines">
+                @foreach (var line in ViewModel.Lines)
+                {
+                    <li class="console-stream-display__line @GetLineClass(line.Type)">
+                        <span class="console-stream-display__timestamp">@line.TimestampUtc.ToLocalTime().ToString("HH:mm:ss")</span>
+                        <span class="console-stream-display__type">@FormatType(line.Type)</span>
+                        <span class="console-stream-display__text">@line.Text</span>
+                    </li>
+                }
+            </ol>
+        }
+    </div>
 </section>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConsoleStreamPresentationService PresentationService { get; set; } = default!;
+
+    private ConsoleStreamViewModel ViewModel => PresentationService.ViewModel;
+
+    protected override void OnInitialized()
+    {
+        PresentationService.State.Changed += HandleStateChanged;
+    }
+
+    private static string FormatType(string type)
+    {
+        return string.IsNullOrWhiteSpace(type) ? "Unknown" : type;
+    }
+
+    private static string GetLineClass(string type)
+    {
+        return type.Trim().ToLowerInvariant() switch
+        {
+            "warning" => "console-stream-display__line--warning",
+            "error" => "console-stream-display__line--error",
+            "system" => "console-stream-display__line--system",
+            _ => "console-stream-display__line--default"
+        };
+    }
+
+    private void HandleStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PresentationService.State.Changed -= HandleStateChanged;
+    }
+}
